@@ -30,7 +30,7 @@ export async function createIndex() {
           vendor: {
             type: "text",
             fields: {
-              keyword: { type: "keyword" },
+              keyword: { type: "keyword", ignore_above: 256 },
             },
           },
           tags: { type: "keyword" },
@@ -57,10 +57,14 @@ export async function createIndex() {
 }
 
 export async function indexProducts(products: Product[]) {
-  const body = products.flatMap((product) => [
-    { index: { _index: INDEX_NAME, _id: product.id } },
-    product,
-  ]);
-  await client.bulk({ refresh: false, body });
+  const BATCH_SIZE = 1000;
+  for (let i = 0; i < products.length; i += BATCH_SIZE) {
+    const batch = products.slice(i, i + BATCH_SIZE);
+    const body = batch.flatMap((doc) => [
+      { index: { _index: INDEX_NAME, _id: doc.id } },
+      doc,
+    ]);
+    await client.bulk({ refresh: false, body });
+  }
   await client.indices.refresh({ index: INDEX_NAME });
 }

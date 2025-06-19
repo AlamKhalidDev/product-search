@@ -53,6 +53,31 @@ export function insertProduct(product: Product) {
   });
 }
 
+export function insertProductsBatch(products: Product[]) {
+  const insert = db.prepare(`
+    INSERT OR REPLACE INTO products (
+      id, title, handle, description, vendor, tags, image, price, 
+      createdAt, updatedAt, productType, status, totalInventory,
+      seoTitle, seoDescription
+    ) VALUES (
+      @id, @title, @handle, @description, @vendor, @tags, @image, @price,
+      @createdAt, @updatedAt, @productType, @status, @totalInventory,
+      @seoTitle, @seoDescription
+    )
+  `);
+
+  const insertMany = db.transaction((products: Product[]) => {
+    for (const product of products) {
+      insert.run({
+        ...product,
+        tags: JSON.stringify(product.tags),
+      });
+    }
+  });
+
+  insertMany(products);
+}
+
 export function getAllProducts(): Product[] {
   const stmt = db.prepare("SELECT * FROM products");
   return stmt.all().map((row: any) => ({

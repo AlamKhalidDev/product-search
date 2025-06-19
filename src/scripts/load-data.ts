@@ -1,11 +1,12 @@
 import fs from "fs";
 import path from "path";
 import csv from "csv-parser";
-import { initDatabase, insertProduct } from "../lib/db";
+import { initDatabase, insertProductsBatch } from "../lib/db";
 import { createIndex, indexProducts } from "../lib/elastic";
 import { Product } from "../types/product";
 
 const CSV_PATH = path.resolve(process.cwd(), "data", "csv.csv");
+const BATCH_SIZE = 1000;
 
 interface CsvRow {
   ID: string;
@@ -33,19 +34,32 @@ function parseJsonField<T>(field: string): T | null {
   }
 }
 
-async function loadCsvData(): Promise<Product[]> {
+async function processBatch(
+  batch: Product[],
+  totalProcessed: number
+): Promise<void> {
+  insertProductsBatch(batch);
+  await indexProducts(batch);
+  console.log(`Processed batch: ${totalProcessed} records so far`);
+}
+
+async function loadCsvData(): Promise<number> {
   if (!fs.existsSync(CSV_PATH)) {
     console.error(`CSV file not found at ${CSV_PATH}`);
     process.exit(1);
   }
 
-  const products: Product[] = [];
   initDatabase();
   console.log("Loading data from CSV...");
 
-  return new Promise<Product[]>((resolve, reject) => {
-    fs.createReadStream(CSV_PATH)
-      .pipe(csv())
+  return new Promise<number>((resolve, reject) => {
+    let batch: Product[] = [];
+    let totalProcessed = 0;
+    let rowCount = 0;
+
+    const stream = fs.createReadStream(CSV_PATH).pipe(csv());
+
+    stream
       .on("data", async (row: CsvRow) => {
         try {
           const seo = parseJsonField<{ title: string; description: string }>(
@@ -78,14 +92,31 @@ async function loadCsvData(): Promise<Product[]> {
             seoDescription: seo?.description || "",
           };
 
-          insertProduct(product);
-          products.push(product);
+          batch.push(product);
+          rowCount++;
+
+          if (batch.length >= BATCH_SIZE) {
+            stream.pause();
+            const currentBatch = [...batch];
+            batch = [];
+            totalProcessed += currentBatch.length;
+            await processBatch(currentBatch, totalProcessed);
+            stream.resume();
+          }
         } catch (err) {
           console.error("Error processing row:", err);
         }
       })
-      .on("end", () => {
-        resolve(products);
+      .on("end", async () => {
+        try {
+          if (batch.length > 0) {
+            totalProcessed += batch.length;
+            await processBatch(batch, totalProcessed);
+          }
+          resolve(rowCount);
+        } catch (err) {
+          reject(err);
+        }
       })
       .on("error", reject);
   });
@@ -93,11 +124,9 @@ async function loadCsvData(): Promise<Product[]> {
 
 (async () => {
   try {
-    const products = await loadCsvData();
-    console.log(`${products.length} loaded successfully\nIndexing products...`);
     await createIndex();
-    await indexProducts(products);
-    console.log(`Indexed ${products.length} products successfully.`);
+    const rowCount = await loadCsvData();
+    console.log(`${rowCount} records loaded successfully.`);
   } catch (err) {
     console.error("Error loading data:", err);
   }
