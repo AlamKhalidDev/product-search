@@ -113,13 +113,17 @@ export default function useSearch() {
   ]);
 
   const handleQueryChange = (query: string) => {
-    setFilterState((prev) => ({ ...prev, query, page: 1 }));
+    setFilterState((prev) => ({ ...prev, query }));
     fetchAutocomplete(query);
   };
 
   const handleSearchSubmit = () => {
     setShowAutocomplete(false);
-    searchProducts();
+    if (filterState.page !== 1) {
+      setFilterState((prev) => ({ ...prev, page: 1 }));
+    } else {
+      searchProducts();
+    }
   };
 
   const resetFilters = () => {
