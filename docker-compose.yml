@@ -13,9 +13,17 @@ services:
     volumes:
       - ./data:/app/data
     command: >
-      sh -c "npm run load-data &&
-             npm run build &&
-             npm start"
+      sh -c "
+        echo 'Waiting for Elasticsearch...';
+        until curl --silent --fail http://elasticsearch:9200/_cluster/health?wait_for_status=yellow; do
+          echo 'Elasticsearch not ready, waiting...';
+          sleep 5;
+        done;
+        echo 'Elasticsearch is up!';
+        npm run load-data &&
+        npm run build &&
+        npm start
+      "
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
