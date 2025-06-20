@@ -69,13 +69,21 @@ export default function useSearch() {
     setIsLoading(true);
     try {
       const res = await fetch(`/api/search?${buildQueryParams()}`);
+      if (res.status === 429) {
+        throw new Error("429");
+      }
+
       if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
+        throw new Error("Failed to fetch products");
       }
       const data = await res.json();
       setResults(data);
-    } catch (error) {
-      toast.error("Failed to fetch products");
+    } catch (error: any) {
+      if (error.message === "429") {
+        toast.error("Too many requests. Please try again later.");
+      } else {
+        toast.error("Failed to fetch products");
+      }
       console.error("Search error:", error);
     } finally {
       setIsLoading(false);
@@ -92,9 +100,20 @@ export default function useSearch() {
       const res = await fetch(
         `/api/autocomplete?q=${encodeURIComponent(query)}`
       );
+      if (res.status === 429) {
+        throw new Error("429");
+      }
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
       const data = await res.json();
       setAutocompleteResults(data);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message === "429") {
+        toast.error("Too many requests. Please try again later.");
+      } else {
+        toast.error("Failed to fetch products");
+      }
       console.error("Autocomplete error:", error);
     }
   };
