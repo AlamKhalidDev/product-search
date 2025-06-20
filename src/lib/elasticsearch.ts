@@ -127,10 +127,20 @@ export async function searchProducts(
   try {
     const result = await client.search({ index: INDEX_NAME, body });
     return {
-      products: result.hits.hits.map((hit) => ({
-        ...(hit._source as Product),
-        highlight: hit.highlight,
-      })),
+      products: result.hits.hits.map((hit) => {
+        const source = hit._source as Product;
+        return {
+          id: source.id,
+          title: source.title,
+          handle: source.handle,
+          vendor: source.vendor,
+          tags: source.tags,
+          image: source.image,
+          price: source.price,
+          status: source.status,
+          totalInventory: source.totalInventory,
+        };
+      }),
       total:
         typeof result.hits.total === "object"
           ? result.hits.total.value
