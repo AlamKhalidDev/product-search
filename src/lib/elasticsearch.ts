@@ -2,6 +2,28 @@ import { Product } from "@/types/product";
 import { Filters, Sort } from "@/types/search";
 import { client, INDEX_NAME } from "./elastic";
 
+// Define types for Elasticsearch query clauses
+type QueryClause =
+  | { term: Record<string, string> }
+  | { range: Record<string, { gte?: number; lte?: number }> }
+  | { bool: BoolQuery }
+  | { multi_match: MultiMatchQuery }
+  | { match_all: Record<string, never> };
+
+interface BoolQuery {
+  should?: QueryClause[];
+  must?: QueryClause[];
+  filter?: QueryClause[];
+  minimum_should_match?: number;
+}
+
+interface MultiMatchQuery {
+  query: string;
+  fields: string[];
+  fuzziness: string;
+  operator: string;
+}
+
 export async function searchProducts(
   query: string,
   filters: Filters = {},
@@ -9,8 +31,8 @@ export async function searchProducts(
   from = 0,
   size = 10
 ) {
-  const must: Record<string, unknown>[] = [];
-  const postFilterClauses: Array<Record<string, unknown>> = [];
+  const must: QueryClause[] = [];
+  const postFilterClauses: QueryClause[] = [];
 
   // Build the main query
   if (query) {
@@ -33,10 +55,7 @@ export async function searchProducts(
   }
 
   // Build post-filter clauses for each filter
-  const buildTermClause = (
-    field: string,
-    rawValues: string
-  ): Record<string, unknown> => {
+  const buildTermClause = (field: string, rawValues: string): QueryClause => {
     const values = rawValues.split(",").map((val) => val.trim());
 
     if (values.length > 1) {
@@ -78,7 +97,7 @@ export async function searchProducts(
   }
 
   // Build the main search body
-  const body: Record<string, unknown> = {
+  const body = {
     query: {
       bool: {
         must: must.length ? must : [{ match_all: {} }],
@@ -108,11 +127,14 @@ export async function searchProducts(
         },
       },
     },
-  };
-
-  if (postFilterClauses.length) {
-    body.post_filter = { bool: { filter: postFilterClauses } };
-  }
+    ...(postFilterClauses.length > 0 && {
+      post_filter: {
+        bool: {
+          filter: postFilterClauses,
+        },
+      },
+    }),
+  } as Record<string, any>;
 
   // Sorting
   let sortField = sort.field;

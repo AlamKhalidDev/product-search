@@ -32,6 +32,7 @@ export default function SearchBar({
   const [autoCompleteSelected, setAutoCompleteSelected] = useState(false);
 
   const [isMounted, setIsMounted] = useState(false);
+  const [clearClick, setClearClick] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -86,7 +87,16 @@ export default function SearchBar({
     setInputValue("");
     onQueryChange("");
     setShowAutocomplete(false);
+    setClearClick(true);
   };
+
+  useEffect(() => {
+    if (clearClick) {
+      onSearchSubmit();
+      setClearClick(false);
+    }
+  }, [clearClick, onSearchSubmit]);
+
   if (!isMounted) return null;
 
   return (

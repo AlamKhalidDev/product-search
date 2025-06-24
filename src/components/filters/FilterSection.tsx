@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type React from "react";
+import { useEffect, useState } from "react";
 
 interface FilterSectionProps {
   title: string;
@@ -17,6 +18,11 @@ export default function FilterSection({
   onToggle,
   children,
 }: FilterSectionProps) {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  if (!isMounted) return null;
   return (
     <div className="border-b border-gray-200 pb-4">
       <button

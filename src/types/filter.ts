@@ -1,12 +1,3 @@
-export interface FilterState {
-  priceRange: [number, number];
-  vendors: string[];
-  productTypes: string[];
-  tags: string[];
-  status: string;
-  page: number;
-}
-
 export interface AggregationBucket {
   key: string;
   doc_count: number;
