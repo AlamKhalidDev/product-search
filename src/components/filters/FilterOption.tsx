@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface FilterOptionProps {
@@ -17,6 +18,14 @@ export default function FilterOption({
   onChange,
   count,
 }: FilterOptionProps) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) return null;
+
   return (
     <div className="flex items-center space-x-2">
       <Checkbox

@@ -31,6 +31,12 @@ export default function SearchBar({
   const searchRef = useRef<HTMLDivElement>(null);
   const [autoCompleteSelected, setAutoCompleteSelected] = useState(false);
 
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   useEffect(() => {
     setInputValue(query);
   }, [query]);
@@ -81,6 +87,7 @@ export default function SearchBar({
     onQueryChange("");
     setShowAutocomplete(false);
   };
+  if (!isMounted) return null;
 
   return (
     <div ref={searchRef} className={`relative ${className}`}>
